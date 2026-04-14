@@ -2,20 +2,18 @@ package entities;
 
 
 import values.Time;
+import values.TimeRange;
 
 public class Lesson {
 
-    private final Time[] time;
+    private final TimeRange time;
     private final Day day;
     private String subjectName;
     private Teacher teacher;
 
-    public Lesson(Day day, Time start, Time end) {
-        this.time = new Time[]{start, end};
+    public Lesson(Day day, TimeRange timeRange, String subjectName) {
+        this.time = timeRange;
         this.day = day;
-    }
-
-    public void setSubjectName(String subjectName) {
         this.subjectName = subjectName;
     }
 
@@ -28,11 +26,11 @@ public class Lesson {
     }
 
     public Time getStartTime() {
-        return time[0];
+        return time.start();
     }
 
     public Time getEndTime() {
-        return time[1];
+        return time.end();
     }
 
     public String getSubjectName() {

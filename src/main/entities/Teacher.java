@@ -1,67 +1,164 @@
-package entities;
+    package entities;
 
-import values.Time;
+    import com.sun.source.tree.Tree;
+    import values.Time;
+    import values.TimeRange;
 
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Set;
+    import java.util.*;
 
-public class Teacher {
+    public class Teacher {
 
-    private final String name;
-    private final EnumMap<Day, List<Time[]>> availableDaysTime = new EnumMap<>(Day.class);
+        private final String name;
+        private final EnumMap<Day, TreeMap<Time, Time>> availableDaysTime = new EnumMap<>(Day.class);
 
-    public Teacher(String name) {
-        this.name = name;
-    }
+        public Teacher(String name) {
+            this.name = name;
+        }
 
-    public String getName() {
-        return name;
-    }
+        public String getName() {
+            return name;
+        }
 
-    public void addAvailableTime(Day day, Time startTime, Time endTime) {
-        Time[] availableTime = {startTime, endTime};
-        if (!availableDaysTime.containsKey(day))
-            availableDaysTime.put(day, new ArrayList<Time[]>());
-        availableDaysTime.get(day).add(availableTime);
-    }
+        public void addAvailableTime(Day day, TimeRange timeRange) {
+            if (timeRange == null)
+                return;
+            if (!availableDaysTime.containsKey(day))
+                availableDaysTime.put(day, new TreeMap<>(COMPARE_BY_TIME));
+            TreeMap<Time, Time> availableTimeInDay = availableDaysTime.get(day);
+            Time start = timeRange.start();
+            Time end = timeRange.end();
+            Time curEndTime = availableTimeInDay.get(start);
+            if (curEndTime == null || curEndTime.compare(end) <= 0)
+                availableTimeInDay.put(start, end);
+            mergeTimes(day, timeRange);
+        }
 
-    //Ввести разбиение на 2 времени в случае, если был удалён внутренний промежуток
-    public Time[] deleteAvailableTime(Day day, Time startTime, Time endTime) {
-        Time[] time = null;
-        List<Time[]> availableDayTime = availableDaysTime.get(day);
-        int size = availableDayTime.size();
-        for (int i = 0; i < size; i++) {
-            Time start = availableDayTime.get(i)[0];
-            Time end = availableDayTime.get(i)[1];
-            if (start.compare(startTime) <= 0 && end.compare(endTime)>= 0) {
-                time = availableDayTime.get(i);
-                availableDayTime.remove(i--);
-                break;
+        public boolean isAvailableTime(Day day, TimeRange timeRange) {
+            Time start = timeRange.start();
+            Time end = timeRange.end();
+            TreeMap<Time, Time> availableTimeInDay = availableDaysTime.get(day);
+            if (availableTimeInDay == null)
+                return false;
+            Map.Entry<Time, Time> lowerStartMap = availableTimeInDay.floorEntry(start);
+            if (lowerStartMap == null)
+                return false;
+            return lowerStartMap.getValue().compare(end) >= 0;
+        }
+
+        public boolean deleteTime(Day day, TimeRange timeRange) {
+            if (!isAvailableTime(day, timeRange))
+                return false;
+            TimeRange firstPart = null;
+            TimeRange secondPart = null;
+
+            Time start = timeRange.start();
+            Time end = timeRange.end();
+            TreeMap<Time, Time> availableTimeInDay = availableDaysTime.get(day);
+            Map.Entry<Time, Time> lowerStartMap = availableTimeInDay.floorEntry(start);
+            Time lowerStart = lowerStartMap.getKey();
+            Time lowerStartEnd = lowerStartMap.getValue();
+
+            if (!start.equals(lowerStart))
+                firstPart = new TimeRange(lowerStart, start);
+            if (!end.equals(lowerStartEnd))
+                secondPart = new TimeRange(end.getMinTime(lowerStartEnd), end.getMaxTime(lowerStartEnd));
+            availableTimeInDay.remove(start);
+            addAvailableTime(day, firstPart);
+            addAvailableTime(day, secondPart);
+            return true;
+        }
+
+        private void mergeTimes(Day day, TimeRange timeRange) {
+            Time start = timeRange.start();
+            Time end = timeRange.end();
+            TreeMap<Time, Time> availableTimesInDay = availableDaysTime.get(day);
+            if (availableTimesInDay == null)
+                return;
+            mergeByLowerStart(availableTimesInDay, start, end);
+        }
+
+        private void mergeByLowerStart(TreeMap<Time, Time> availableTimesInDay, Time start, Time end) {
+            Map<Time, Time> lowerStart = availableTimesInDay.headMap(start, true);
+            if (lowerStart == null)
+                return;
+            Set<Time> lowerStartKeys = new HashSet<>(lowerStart.keySet());
+
+            for (Time lowerStartKey : lowerStartKeys) {
+                Time curKeyEnd = lowerStart.get(lowerStartKey);
+                if (curKeyEnd.compare(start) < 0)
+                    continue;
+                Time maxEnd = curKeyEnd.getMaxTime(end);
+                availableTimesInDay.remove(start);
+                availableTimesInDay.put(lowerStartKey, maxEnd);
+                start = lowerStartKey;
             }
         }
-        return time;
-    }
 
-    public boolean isAvailableTime(Day day, Time start, Time end) {
-        if (!availableDaysTime.containsKey(day))
-            return false;
-        List<Time[]> daysTimes = availableDaysTime.get(day);
-        for (Time[] timeRange : daysTimes) {
-            if (timeRange[0].compare(start) <= 0 && timeRange[1].compare(end) >= 0)
-                return true;
-        }
-        return false;
-    }
 
-    public void printAvailableTimes() {
-        Set<Day> days = availableDaysTime.keySet();
-        for (Day day : days) {
-            System.out.println("main.entities.Day: " + day.name());
-            List<Time[]> dayTimes = availableDaysTime.get(day);
-            for (Time[] timeRange : dayTimes)
-                System.out.println("Start: " + timeRange[0] + "| End: " + timeRange[1]);
-        }
+    //    private void mergeByHigherStart(TreeMap<Time, Time> availableTimesInDay, Time start, Time end) {
+    //        Map<Time, Time> higherStart = availableTimesInDay.tailMap(start, true);
+    //        Set<Time> higherStartKeys = higherStart.keySet();
+    //
+    //        for (Time higherStartKey : higherStartKeys) {
+    //            Time curKeyEnd = higherStart.get(higherStartKey);
+    //            if (end.compare(higherStartKey) < 0)
+    //                break;
+    //            Time maxEnd = curKeyEnd.getMaxTime(end);
+    //            availableTimesInDay.remove(higherStartKey);
+    //            availableTimesInDay.put(start, maxEnd);
+    //        }
+    //    }
+
+
+
+        //Ввести разбиение на 2 времени в случае, если был удалён внутренний промежуток
+    //    public Time[] deleteAvailableTime(Day day, Time startTime, Time endTime) {
+    //        Time[] time = null;
+    ////        TreeSet<Time[]> availableDayTime = availableDaysTime.get(day);
+    ////        int size = availableDayTime.size();
+    ////        for (int i = 0; i < size; i++) {
+    ////            Time start = availableDayTime.get(i)[0];
+    ////            Time end = availableDayTime.get(i)[1];
+    ////            if (start.compare(startTime) <= 0 && end.compare(endTime)>= 0) {
+    ////                time = availableDayTime.get(i);
+    ////                availableDayTime.remove(i--);
+    ////                break;
+    ////            }
+    ////        }
+    //        return time;
+    //    }
+
+
+
+
+        private final static Comparator<Time> COMPARE_BY_TIME = new Comparator<Time>() {
+            @Override
+            public int compare(Time o1, Time o2) {
+                return o1.compare(o2);
+            }
+        };
+
+
+
+
+    //    public void printAvailableTimes() {
+    //        Set<Day> days = availableDaysTime.keySet();
+    //        for (Day day : days) {
+    //            System.out.println("main.entities.Day: " + day.name());
+    //            List<Time[]> dayTimes = availableDaysTime.get(day);
+    //            for (Time[] timeRange : dayTimes)
+    //                System.out.println("Start: " + timeRange[0] + "| End: " + timeRange[1]);
+    //        }
+    //    }
+
+        //    public boolean isAvailableTime(Day day, Time start, Time end) {
+    //        if (!availableDaysTime.containsKey(day))
+    //            return false;
+    //        List<Time[]> daysTimes = availableDaysTime.get(day);
+    //        for (Time[] timeRange : daysTimes) {
+    //            if (timeRange[0].compare(start) <= 0 && timeRange[1].compare(end) >= 0)
+    //                return true;
+    //        }
+    //        return false;
+    //    }
     }
-}

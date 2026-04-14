@@ -1,4 +1,4 @@
 package values;
 
-public class TimeRange {
+public record TimeRange(Time start, Time end){
 }
