@@ -17,8 +17,7 @@ public class SheduleCreator {
 
     private final Lessons lessonsRepo;
     private final Teachers teachersRepo;
-    private final List<Teacher> chosenTeachers = new ArrayList<>();
-    public final List<TeacherLesson> chosenTeacherLessons = new ArrayList<>();
+    private Map<Lesson, HashSet<Teacher>> table;
 
 
     public SheduleCreator(Lessons lessonsRepo, Teachers teachersRepo) {
@@ -27,121 +26,121 @@ public class SheduleCreator {
     }
 
 
-    public List<Teacher> sheduleCreate() {
-        sheduleCreator(0, lessonsRepo.getLessons(), teachersRepo.getTeachers());
-        return chosenTeachers;
+
+    public boolean shedule() {
+        this.table = tableLessonsTeachers();
+        if (!forwardCheck())
+            return false;
+        return sheduleCreate(lessonsRepo.getLessons().size());
     }
 
-
-    //TODO: Исправить баг с добавлением вреемни урока, вместо времени преподавателя
-    private boolean sheduleCreator(int lessonIdx, List<Lesson> lessons, List<Teacher> teachers) {
-        int lessonsSize = lessons.size();
-        int teachersSize = teachers.size();
-
-        if (lessonsSize == 0)
+    private boolean sheduleCreate(int count) {
+        if (count == 0)
             return true;
 
-        for (int i = lessonIdx; i < lessonsSize; i++) {
-            boolean foundTeacher = false;
-            for (int j = 0; j < teachersSize; j++) {
-                Lesson lesson = lessons.get(i);
-                Teacher teacher = teachers.get(j);
-                Day day = lesson.getDay();
-                Time start = lesson.getStartTime();
-                Time end = lesson.getEndTime();
+        Lesson leastTeachersLesson = leastTeachersLesson();
+        HashSet<Teacher> teachersOnLesson = table.get(leastTeachersLesson);
+        int size = teachersOnLesson.size();
+        while (size-- > 0) {
+            Teacher chosenTeacher = chooseTeacher(teachersOnLesson);
+            chosenTeacher.deleteTime(leastTeachersLesson.getDay(), leastTeachersLesson.getTime());
+            List<Lesson> lessonRemovedTeachers = updateTeachers(chosenTeacher);
+            leastTeachersLesson.setTeacher(chosenTeacher);
 
-                if (!teacher.isAvailableTime(day, new TimeRange(start, end)))
-                    continue;
-                chosenTeachers.add(teacher);
-                //Тест
-                chosenTeacherLessons.add(new TeacherLesson(lesson, teacher));
-                int k = chosenTeachers.size() - 1;
-                lessons.remove(i);
-                if (sheduleCreator(i, lessons, teachers))
-                    return true;
-                else {
-                    chosenTeachers.remove(k);
-                    //Тест
-                    chosenTeacherLessons.remove(k);
-                }
-                lessons.add(i, lesson);
-                teachers.get(j).addAvailableTime(day, new TimeRange(start, end));
-            }
-            if (!foundTeacher)
+            if (lessonRemovedTeachers == null) {
+                leastTeachersLesson.setTeacher(null);
+                chosenTeacher.addAvailableTime(leastTeachersLesson.getDay(), leastTeachersLesson.getTime());
                 return false;
+            }
+            table.remove(leastTeachersLesson);
+            if (sheduleCreate(count - 1))
+                return true;
+            table.put(leastTeachersLesson, teachersOnLesson);
+            addTeacherToLessons(lessonRemovedTeachers, chosenTeacher);
+            leastTeachersLesson.setTeacher(null);
+            chosenTeacher.addAvailableTime(leastTeachersLesson.getDay(), leastTeachersLesson.getTime());
         }
+        leastTeachersLesson.setTeacher(null);
         return false;
     }
 
 
-    private Map<Lesson, Teacher> findAvailableTeachers() {
+    //TODO: Добавить логику выбора учителя с наибольшим диапазоном времени
+    private Teacher chooseTeacher(HashSet<Teacher> teacherOnLesson) {
+        return teacherOnLesson.iterator().next();
+    }
 
+    private void addTeacherToLessons(List<Lesson> lessons, Teacher teacher) {
+        if (lessons == null)
+            return;
+        for (Lesson lesson : lessons) {
+            table.get(lesson).add(teacher);
+        }
+    }
+
+    private List<Lesson> updateTeachers(Teacher usedTeacher) {
+        Set<Lesson> lessons = table.keySet();
+        List<Lesson> chosenLessons = new ArrayList<>(lessons.size());
+        int count = 0;
+        for (Lesson lesson : lessons) {
+            HashSet<Teacher> teachers = table.get(lesson);
+            if (!teachers.contains(usedTeacher))
+                continue;
+            if (!usedTeacher.isAvailableTime(lesson.getDay(), lesson.getTime())) {
+                teachers.remove(usedTeacher);
+                chosenLessons.add(lesson);
+            }
+            if (isLessonNoTeachers(lesson) && count != 0) {
+                addTeacherToLessons(chosenLessons, usedTeacher);
+                return null;
+            }
+            count++;
+        }
+        return chosenLessons;
+    }
+
+    private boolean isLessonNoTeachers(Lesson lesson) {
+        return table.get(lesson).isEmpty();
+    }
+
+    private boolean forwardCheck() {
+        Set<Lesson> lessons = table.keySet();
+        for (Lesson lesson : lessons) {
+            if (isLessonNoTeachers(lesson))
+                return false;
+        }
+        return true;
+    }
+
+    private Lesson leastTeachersLesson() {
+        Set<Lesson> lessons = table.keySet();
+        int minTeachersSize = Integer.MAX_VALUE;
+        Lesson minTeachersLesson = null;
+        for (Lesson lesson : lessons) {
+            int size = table.get(lesson).size();
+            if (minTeachersSize > size) {
+                minTeachersSize = size;
+                minTeachersLesson = lesson;
+            }
+        }
+        return minTeachersLesson;
+    }
+
+    private Map<Lesson, HashSet<Teacher>> tableLessonsTeachers() {
+        Map<Lesson, HashSet<Teacher>> table = new HashMap<>();
+        List<Lesson> lessons = lessonsRepo.getLessons();
+        List<Teacher> teachers = teachersRepo.getTeachers();
+
+        for (Lesson lesson : lessons) {
+            if (!table.containsKey(lesson))
+                table.put(lesson, new HashSet<>());
+            for (Teacher teacher : teachers) {
+                if (teacher.isAvailableTime(lesson.getDay(), lesson.getTime()))
+                    table.get(lesson).add(teacher);
+            }
+        }
+        return table;
     }
 
 
-    private static final Comparator<Lesson> COMPARE_BY_ONE_SUBJECT_START_TIME = new Comparator<Lesson>() {
-        @Override
-        public int compare(Lesson o1, Lesson o2) {
-            int res = o1.getSubjectName().compareTo(o2.getSubjectName());
-            if (res != 0)
-                return res;
-            res = o1.getStartTime().compare(o2.getStartTime());
-            return res != 0 ? res : o1.getEndTime().compare(o2.getEndTime());
-        }
-    };
-
-
-
-/*
-Заводим дерево TreeMap<Integer, TreeMap<Lesson, TreeSet<Teacher>> теперь treemap<lesson,treeset<teacher>> даём компаратор на проверку сначала по имени предмета, потом если они совпали по времени
- (Это нужно, чтобы быстрее находить доступны ли промежутки и быстрее заполнять таблицу, также можно будет сразу исключать преподавателей).
-Во внешний treemap мы отдаём компаратор, дающий возрастающее дерево.
- В итоге мы будем идти по дереву и удалять преподавателей в разных промежутках (Это будет достаточно быстро благодаря первому компаратору).
- Зная текущее количество пройденных узлов мы сможем просто взять количество элементов с количество преподаватлей 0, благодаря чему тут же будем отсекать ненужные варианты.
- Фактически это и forward checking, и эвристика, и ускорение благодаря тому, что таблицу заполняем сразу, а не пересчитываем всё десятки раз и ускорение за счёт структуры дерева, так как мы будем знать каких учителей можно сразу будет отброосить и динамика.
- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-//    private boolean sheduleCreator(int lessonIdx, List<Lesson> lessons, List<Teacher> teachers) {
-//        int lessonsSize = lessons.size();
-//        int teachersSize = teachers.size();
-//
-//        if (lessonsSize == 0)
-//            return true;
-//
-//        for (int i = lessonIdx; i < lessonsSize; i++) {
-//            boolean foundTeacher = false;
-//            for (int j = 0; j < teachersSize; j++) {
-//                Lesson lesson = lessons.get(i);
-//                Teacher teacher = teachers.get(j);
-//                Day day = lesson.getDay();
-//
-//                if (!isTeacherAvailable(day, lesson, teacher))
-//                    continue;
-//                chosenTeachers.add(teacher);
-//                lessons.remove(i);
-//                Time[] removedTeacherTime = teacher.deleteAvailableTime(day, start, end);
-//                if (sheduleCreator(i, lessons, teachers))
-//                    return true;
-//                else
-//                    chosenTeachers.remove(teacher);
-//                lessons.add(i, lesson);
-//                teachers.get(j).addAvailableTime(day, removedTeacherTime[0], removedTeacherTime[1]);
-//            }
-//            if (!foundTeacher)
-//                return false;
-//        }
-//        return false;
-//    }
 }

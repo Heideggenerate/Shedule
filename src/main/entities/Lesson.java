@@ -8,7 +8,7 @@ public class Lesson {
 
     private final TimeRange time;
     private final Day day;
-    private String subjectName;
+    private final String subjectName;
     private Teacher teacher;
 
     public Lesson(Day day, TimeRange timeRange, String subjectName) {
@@ -25,12 +25,8 @@ public class Lesson {
         return day;
     }
 
-    public Time getStartTime() {
-        return time.start();
-    }
-
-    public Time getEndTime() {
-        return time.end();
+    public TimeRange getTime() {
+        return time;
     }
 
     public String getSubjectName() {

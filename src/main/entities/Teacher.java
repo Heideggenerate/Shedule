@@ -85,7 +85,7 @@
 
             for (Time lowerStartKey : lowerStartKeys) {
                 Time curKeyEnd = lowerStart.get(lowerStartKey);
-                if (curKeyEnd.compare(start) < 0)
+                if (curKeyEnd == null || curKeyEnd.compare(start) < 0)
                     continue;
                 Time maxEnd = curKeyEnd.getMaxTime(end);
                 availableTimesInDay.remove(start);
@@ -95,38 +95,14 @@
         }
 
 
-    //    private void mergeByHigherStart(TreeMap<Time, Time> availableTimesInDay, Time start, Time end) {
-    //        Map<Time, Time> higherStart = availableTimesInDay.tailMap(start, true);
-    //        Set<Time> higherStartKeys = higherStart.keySet();
-    //
-    //        for (Time higherStartKey : higherStartKeys) {
-    //            Time curKeyEnd = higherStart.get(higherStartKey);
-    //            if (end.compare(higherStartKey) < 0)
-    //                break;
-    //            Time maxEnd = curKeyEnd.getMaxTime(end);
-    //            availableTimesInDay.remove(higherStartKey);
-    //            availableTimesInDay.put(start, maxEnd);
-    //        }
-    //    }
-
-
-
-        //Ввести разбиение на 2 времени в случае, если был удалён внутренний промежуток
-    //    public Time[] deleteAvailableTime(Day day, Time startTime, Time endTime) {
-    //        Time[] time = null;
-    ////        TreeSet<Time[]> availableDayTime = availableDaysTime.get(day);
-    ////        int size = availableDayTime.size();
-    ////        for (int i = 0; i < size; i++) {
-    ////            Time start = availableDayTime.get(i)[0];
-    ////            Time end = availableDayTime.get(i)[1];
-    ////            if (start.compare(startTime) <= 0 && end.compare(endTime)>= 0) {
-    ////                time = availableDayTime.get(i);
-    ////                availableDayTime.remove(i--);
-    ////                break;
-    ////            }
-    ////        }
-    //        return time;
-    //    }
+        @Override
+        public boolean equals(Object teacher) {
+            if (!(teacher instanceof Teacher teacherInstance))
+                return false;
+            if (this == teacher)
+                return true;
+            return name.equals(teacherInstance.name);
+        }
 
 
 
@@ -141,24 +117,4 @@
 
 
 
-    //    public void printAvailableTimes() {
-    //        Set<Day> days = availableDaysTime.keySet();
-    //        for (Day day : days) {
-    //            System.out.println("main.entities.Day: " + day.name());
-    //            List<Time[]> dayTimes = availableDaysTime.get(day);
-    //            for (Time[] timeRange : dayTimes)
-    //                System.out.println("Start: " + timeRange[0] + "| End: " + timeRange[1]);
-    //        }
-    //    }
-
-        //    public boolean isAvailableTime(Day day, Time start, Time end) {
-    //        if (!availableDaysTime.containsKey(day))
-    //            return false;
-    //        List<Time[]> daysTimes = availableDaysTime.get(day);
-    //        for (Time[] timeRange : daysTimes) {
-    //            if (timeRange[0].compare(start) <= 0 && timeRange[1].compare(end) >= 0)
-    //                return true;
-    //        }
-    //        return false;
-    //    }
     }
