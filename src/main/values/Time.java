@@ -36,6 +36,6 @@ public record Time(int hours, int minutes) {
 
     @Override
     public String toString() {
-        return "[hours = " + hours + " | " + "minutes = " + minutes + "]";
+        return "[hrs = " + hours + " | " + "min = " + minutes + "]";
     }
 }

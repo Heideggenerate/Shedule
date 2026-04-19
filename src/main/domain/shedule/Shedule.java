@@ -1,68 +1,67 @@
-package domain;
+package domain.shedule;
 
-import entities.Day;
+import dto.CompiledLesson;
 import entities.Lesson;
 import entities.Teacher;
+import dto.builders.CompiledLessonsBuilder;
 import repository.Lessons;
 import repository.Teachers;
 
 import java.util.*;
 
-import values.Time;
-import values.TimeRange;
-
-public class SheduleCreator {
-
-    public record TeacherLesson(Lesson lesson, Teacher teacher) { }
+public class Shedule {
 
     private final Lessons lessonsRepo;
     private final Teachers teachersRepo;
     private Map<Lesson, HashSet<Teacher>> table;
 
 
-    public SheduleCreator(Lessons lessonsRepo, Teachers teachersRepo) {
+    public Shedule(Lessons lessonsRepo, Teachers teachersRepo) {
         this.lessonsRepo = lessonsRepo;
         this.teachersRepo = teachersRepo;
     }
 
 
 
-    public boolean shedule() {
+    public List<CompiledLesson> shedule() {
         this.table = tableLessonsTeachers();
         if (!forwardCheck())
-            return false;
-        return sheduleCreate(lessonsRepo.getLessons().size());
+            return null;
+        List<CompiledLesson> compiledLessons = new ArrayList<>();
+        sheduleCreate(lessonsRepo.get().size(), compiledLessons);
+        return compiledLessons;
     }
 
-    private boolean sheduleCreate(int count) {
+    private boolean sheduleCreate(int count, List<CompiledLesson> compiledLessons) {
         if (count == 0)
             return true;
 
         Lesson leastTeachersLesson = leastTeachersLesson();
         HashSet<Teacher> teachersOnLesson = table.get(leastTeachersLesson);
         int size = teachersOnLesson.size();
+
         while (size-- > 0) {
             Teacher chosenTeacher = chooseTeacher(teachersOnLesson);
-            chosenTeacher.deleteTime(leastTeachersLesson.getDay(), leastTeachersLesson.getTime());
+            chosenTeacher.deleteTime(leastTeachersLesson.day(), leastTeachersLesson.time());
             List<Lesson> lessonRemovedTeachers = updateTeachers(chosenTeacher);
-            leastTeachersLesson.setTeacher(chosenTeacher);
 
             if (lessonRemovedTeachers == null) {
-                leastTeachersLesson.setTeacher(null);
-                chosenTeacher.addAvailableTime(leastTeachersLesson.getDay(), leastTeachersLesson.getTime());
+                chosenTeacher.addAvailableTime(leastTeachersLesson.day(), leastTeachersLesson.time());
                 return false;
             }
+            CompiledLesson compiledLesson = new CompiledLessonsBuilder(leastTeachersLesson).setTeacher(chosenTeacher).build();
+            compiledLessons.add(compiledLesson);
             table.remove(leastTeachersLesson);
-            if (sheduleCreate(count - 1))
+            if (sheduleCreate(count - 1, compiledLessons))
                 return true;
             table.put(leastTeachersLesson, teachersOnLesson);
             addTeacherToLessons(lessonRemovedTeachers, chosenTeacher);
-            leastTeachersLesson.setTeacher(null);
-            chosenTeacher.addAvailableTime(leastTeachersLesson.getDay(), leastTeachersLesson.getTime());
+            compiledLessons.remove(compiledLesson);
+            chosenTeacher.addAvailableTime(leastTeachersLesson.day(), leastTeachersLesson.time());
         }
-        leastTeachersLesson.setTeacher(null);
         return false;
     }
+
 
 
     //TODO: Добавить логику выбора учителя с наибольшим диапазоном времени
@@ -86,15 +85,14 @@ public class SheduleCreator {
             HashSet<Teacher> teachers = table.get(lesson);
             if (!teachers.contains(usedTeacher))
                 continue;
-            if (!usedTeacher.isAvailableTime(lesson.getDay(), lesson.getTime())) {
+            if (!usedTeacher.isAvailableTime(lesson.day(), lesson.time())) {
                 teachers.remove(usedTeacher);
                 chosenLessons.add(lesson);
             }
-            if (isLessonNoTeachers(lesson) && count != 0) {
+            if (isLessonNoTeachers(lesson) && count++ != 0) {
                 addTeacherToLessons(chosenLessons, usedTeacher);
                 return null;
             }
-            count++;
         }
         return chosenLessons;
     }
@@ -128,14 +126,14 @@ public class SheduleCreator {
 
     private Map<Lesson, HashSet<Teacher>> tableLessonsTeachers() {
         Map<Lesson, HashSet<Teacher>> table = new HashMap<>();
-        List<Lesson> lessons = lessonsRepo.getLessons();
-        List<Teacher> teachers = teachersRepo.getTeachers();
+        List<Lesson> lessons = lessonsRepo.get();
+        List<Teacher> teachers = teachersRepo.get();
 
         for (Lesson lesson : lessons) {
             if (!table.containsKey(lesson))
                 table.put(lesson, new HashSet<>());
             for (Teacher teacher : teachers) {
-                if (teacher.isAvailableTime(lesson.getDay(), lesson.getTime()))
+                if (teacher.isAvailableTime(lesson.day(), lesson.time()))
                     table.get(lesson).add(teacher);
             }
         }

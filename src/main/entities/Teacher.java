@@ -1,6 +1,6 @@
     package entities;
 
-    import com.sun.source.tree.Tree;
+    import values.Day;
     import values.Time;
     import values.TimeRange;
 
@@ -105,6 +105,10 @@
         }
 
 
+        @Override
+        public String toString() {
+            return "NAME: " + name;
+        }
 
 
         private final static Comparator<Time> COMPARE_BY_TIME = new Comparator<Time>() {

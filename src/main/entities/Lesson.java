@@ -1,39 +1,23 @@
 package entities;
 
 
-import values.Time;
+import values.Day;
 import values.TimeRange;
 
-public class Lesson {
+public record Lesson(Day day, TimeRange time, String subjectName) {
 
-    private final TimeRange time;
-    private final Day day;
-    private final String subjectName;
-    private Teacher teacher;
-
-    public Lesson(Day day, TimeRange timeRange, String subjectName) {
-        this.time = timeRange;
-        this.day = day;
-        this.subjectName = subjectName;
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof Lesson(Day day1, TimeRange time1, String subjectName1)))
+            return false;
+        if (this == object)
+            return true;
+        return day1.equals(day) && time1.equals(time) && subjectName1.equals(subjectName);
     }
 
-    public void setTeacher(Teacher teacher) {
-        this.teacher = teacher;
-    }
 
-    public Day getDay() {
-        return day;
-    }
-
-    public TimeRange getTime() {
-        return time;
-    }
-
-    public String getSubjectName() {
-        return subjectName;
-    }
-
-    public Teacher getTeacher() {
-        return teacher;
+    @Override
+    public String toString() {
+        return "DAY: " + day.toString() + " " + time.toString() + "SUBJECT: " + subjectName;
     }
 }

@@ -1,5 +1,6 @@
-import domain.SheduleCreator;
-import entities.Day;
+import domain.shedule.Shedule;
+import dto.CompiledLesson;
+import values.Day;
 import entities.Lesson;
 import entities.Teacher;
 import repository.Lessons;
@@ -18,7 +19,7 @@ void main() {
     int m = 0;
 
     for (int i = 0; i < 36; i++) {
-        lessons.addLesson(new Lesson(
+        lessons.add(new Lesson(
                 Day.MONDAY,
                 new TimeRange(new Time(h, m), new Time(h, m + 20)),
                 "A"
@@ -41,7 +42,7 @@ void main() {
                         new Time(18, 40))
         );
 
-        teachers.addTeacher(t);
+        teachers.add(t);
     }
 
 // 🟡 SHIFT (сдвинутые — усиливают ветвление)
@@ -53,7 +54,7 @@ void main() {
                         new Time(19, 0))
         );
 
-        teachers.addTeacher(t);
+        teachers.add(t);
     }
 
 // 🔵 CHAOS (почти одинаковые интервалы)
@@ -65,7 +66,7 @@ void main() {
                         new Time(17 + (i % 3), 40))
         );
 
-        teachers.addTeacher(t);
+        teachers.add(t);
     }
 
 // 🟣 TRAP (ломают решение ТОЛЬКО в конце)
@@ -77,7 +78,7 @@ void main() {
                         new Time(20, 0))
         );
 
-        teachers.addTeacher(t);
+        teachers.add(t);
     }
 
 // 🟢 FORCING (единственно правильные, но НЕ очевидные)
@@ -91,7 +92,7 @@ void main() {
                         new Time(startH, 40))
         );
 
-        teachers.addTeacher(t);
+        teachers.add(t);
     }
 
 // ⚫ FAKE (создают ложные решения)
@@ -103,23 +104,46 @@ void main() {
                         new Time(14 + (i % 4), 40))
         );
 
-        teachers.addTeacher(t);
+        teachers.add(t);
     }
 
 // ===================== RUN =====================
 
-    SheduleCreator sc = new SheduleCreator(lessons, teachers);
+    Shedule sc = new Shedule(lessons, teachers);
 
     long start = System.currentTimeMillis();
-    boolean result = sc.shedule();
+    List<List<CompiledLesson>> result = sc.sheduleAllVar();
     long end = System.currentTimeMillis();
 
     System.out.println("TIME: " + (end - start));
-    System.out.println(result);
-
-    sc.shedule();
-    List<Lesson> lessonsList = lessons.getLessons();
-    for (Lesson lesson : lessonsList) {
-        lesson.getTeacher();
+    int count = 1;
+    for (List<CompiledLesson> compiledLessons : result) {
+        System.out.println(count + " Var");
+        for (CompiledLesson compiledLesson : compiledLessons) {
+            System.out.println(compiledLesson);
+        }
     }
+
+//    Lesson a = new Lesson(Day.MONDAY, new TimeRange(new Time(10, 0), new Time(12, 0)), "A");
+//    Lesson b = new Lesson(Day.MONDAY, new TimeRange(new Time(10, 0), new Time(12, 0)), "B");
+//    lessons.addLesson(a);
+//    lessons.addLesson(b);
+//    Teacher t1 = new Teacher("A");
+//    Teacher t2 = new Teacher("B");
+//    t1.addAvailableTime(Day.MONDAY, new TimeRange(new Time(10,  0), new Time(12, 0)));
+//    t2.addAvailableTime(Day.MONDAY, new TimeRange(new Time(10,  0), new Time(12, 0)));
+//    teachers.addTeacher(t1);
+//    teachers.addTeacher(t2);
+//
+//
+//    Shedule shedule = new Shedule(lessons, teachers);
+//    List<List<CompiledLesson>> compiledLessons = shedule.sheduleAllVar();
+//    int count = 1;
+//    for (List<CompiledLesson> compiledLessonsList : compiledLessons) {
+//        System.out.println(count + " Var");
+//        for (CompiledLesson lesson : compiledLessonsList) {
+//            System.out.println(lesson);
+//        }
+//        count++;
+//    }
 }

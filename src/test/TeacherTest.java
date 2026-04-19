@@ -1,4 +1,4 @@
-import entities.Day;
+import values.Day;
 import entities.Teacher;
 import org.junit.Assert;
 import org.junit.Test;

@@ -9,11 +9,11 @@ public class Lessons {
 
     private final List<Lesson> lessons = new ArrayList<>();
 
-    public void addLesson(Lesson lesson) {
+    public void add(Lesson lesson) {
         lessons.add(lesson);
     }
 
-    public List<Lesson> getLessons() {
+    public List<Lesson> get() {
         return lessons;
     }
 
